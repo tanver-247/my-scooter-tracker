@@ -182,3 +182,13 @@ def record_new_point(lat, lon, timestamp=None):
 
 if __name__ == "__main__":
     record_new_point(23.8174147, 90.5352147, "2026-09-26 20:14:45")
+
+
+    # ফাইলটি সরাসরি 'public/index.html' হিসেবে সেভ করা যাতে Vercel লাইভ দেখাতে পারে
+    os.makedirs("public", exist_ok=True)
+    MAP_FILE = "public/index.html"
+
+    with open(MAP_FILE, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Dashboard updated -> {MAP_FILE}")
