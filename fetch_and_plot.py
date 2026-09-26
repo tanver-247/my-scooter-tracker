@@ -71,3 +71,14 @@ if __name__ == "__main__":
 
         print(f"Next query in {POLL_INTERVAL_SECONDS} seconds...")
         time.sleep(POLL_INTERVAL_SECONDS)
+
+        import subprocess
+
+def git_auto_sync():
+    try:
+        subprocess.run(["git", "add", "location_history.json"], check=True)
+        subprocess.run(["git", "commit", "-m", "Auto-update live scooter location"], check=True)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
+        print("Successfully synced location history to GitHub & Vercel!")
+    except Exception as e:
+        print(f"Git sync skipped or failed: {e}")
