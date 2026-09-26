@@ -22,7 +22,7 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             border: 1px solid rgba(255,255,255,0.15);
         }
-        .hud h2 { margin: 0 0 6px 0; font-size: 16px; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 8px;}
+        .hud h2 { margin: 0 0 6px 0; font-size: 16px; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
         .hud p { margin: 4px 0; font-size: 13px; color: #cbd5e1; }
         .live-badge {
             width: 9px;
@@ -31,7 +31,7 @@
             border-radius: 50%;
             display: inline-block;
             box-shadow: 0 0 8px #22c55e;
-            animation: pulse 1.5px infinite;
+            animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
             0% { transform: scale(0.95); opacity: 0.8; }
@@ -43,25 +43,23 @@
 <body>
     <div class="hud">
         <h2><span class="live-badge"></span> Scooter Live Tracker</h2>
-        <p><strong>Status:</strong> <span id="status-text" style="color: #22c55e;">Connected & Live</span></p>
-        <p><strong>Last Seen:</strong> <span id="last-time">Loading...</span></p>
-        <p><strong>Coordinates:</strong> <span id="coords">--</span></p>
-        <p><strong>Total History Points:</strong> <span id="total-points">0</span></p>
+        <p><strong>Status:</strong> <span style="color: #22c55e;">Connected & Live</span></p>
+        <p><strong>Last Seen:</strong> 2026-09-26 22:59:02</p>
+        <p><strong>Coordinates:</strong> 23.817415, 90.535214</p>
+        <p><strong>Total History Points:</strong> 1</p>
     </div>
 
     <div id="map"></div>
 
     <script>
-        // ম্যাপ ইনিশিয়ালাইজেশন
-        const map = L.map('map').setView([23.817414, 90.535214], 16);
+        const historyData = [{"lat": 23.817415, "lon": 90.5352144, "time": "2026-09-26 22:59:02"}];
+        const map = L.map('map').setView([23.817415, 90.5352144], 16);
 
-        // Google Hybrid Satellite Layer
-        const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
 
-        // কাস্টম 3D Scooter Icon (Emoji / Styled Marker)
         const scooterIcon = L.divIcon({
             className: 'custom-scooter-marker',
             html: '<div style="font-size: 28px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6)); transform: rotate(-25deg);">🛵</div>',
@@ -69,85 +67,32 @@
             iconAnchor: [17, 17]
         });
 
-        let currentMarker = null;
-        let polyline = null;
-        let historyLayers = [];
+        const latlngs = [];
+        historyData.forEach((point, index) => {
+            const pos = [point.lat, point.lon];
+            latlngs.push(pos);
 
-        async function fetchAndUpdateMap() {
-            try {
-                // সরাসরি গিটহাব বা ভেরসেল থেকে লেটেস্ট হিস্ট্রি ফাইল ফেচ করা
-                const response = await fetch('location_history.json?_=' + new Date().getTime());
-                if (!response.ok) throw new Error("Failed to fetch location history");
-                
-                const historyData = await response.json();
-                if (!historyData || historyData.length === 0) return;
-
-                const lastPoint = historyData[historyData.length - 1];
-                
-                // HUD আপডেট
-                document.getElementById('last-time').innerText = lastPoint.time;
-                document.getElementById('coords').innerText = `${lastPoint.lat.toFixed(6)}, ${lastPoint.lon.toFixed(6)}`;
-                document.getElementById('total-points').innerText = historyData.length;
-
-                // পুরানো মার্কার ও লেয়ার রিমোভ করা
-                if (currentMarker) map.removeLayer(currentMarker);
-                historyLayers.forEach(layer => map.removeLayer(layer));
-                historyLayers = [];
-
-                const latlngs = [];
-
-                historyData.forEach((point, index) => {
-                    const pos = [point.lat, point.lon];
-                    latlngs.push(pos);
-
-                    if (index === historyData.length - 1) {
-                        // বর্তমান লেটেস্ট লোকেশনে 3D স্কুটার আইকন
-                        currentMarker = L.marker(pos, { icon: scooterIcon }).addTo(map)
-                            .bindPopup(`<b>Scooter Live Location</b><br>Time: ${point.time}`);
-                        
-                        // প্রথম লোডে সেন্টারিং
-                        if (index === 0 || window.isFirstLoad !== false) {
-                            map.setView(pos, 17);
-                            window.isFirstLoad = false;
-                        }
-                    } else {
-                        // আগের হিস্ট্রি পয়েন্টগুলো ছোট ডট হিসেবে থাকবে
-                        const dot = L.circleMarker(pos, {
-                            radius: 4,
-                            color: '#38bdf8',
-                            fillColor: '#38bdf8',
-                            fillOpacity: 0.8
-                        }).addTo(map).bindPopup(`History: ${point.time}`);
-                        historyLayers.push(dot);
-                    }
-                });
-
-                // ট্রাভেল হিস্ট্রি রুট লাইন (Polyline)
-                if (polyline) map.removeLayer(polyline);
-                if (latlngs.length > 1) {
-                    polyline = L.polyline(latlngs, {
-                        color: '#38bdf8',
-                        weight: 5,
-                        opacity: 0.85,
-                        smoothFactor: 1
-                    }).addTo(map);
-                }
-
-                document.getElementById('status-text').style.color = '#22c55e';
-                document.getElementById('status-text').innerText = 'Synced 🟢';
-
-            } catch (error) {
-                console.error("Error updating map:", error);
-                document.getElementById('status-text').style.color = '#ef4444';
-                document.getElementById('status-text').innerText = 'Syncing... (Retrying)';
+            if (index === historyData.length - 1) {
+                L.marker(pos, { icon: scooterIcon }).addTo(map)
+                    .bindPopup("<b>Scooter Live Location</b><br>Time: " + point.time).openPopup();
+            } else {
+                L.circleMarker(pos, {
+                    radius: 4,
+                    color: '#38bdf8',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup("History: " + point.time);
             }
+        });
+
+        if (latlngs.length > 1) {
+            L.polyline(latlngs, {
+                color: '#38bdf8',
+                weight: 5,
+                opacity: 0.85,
+                smoothFactor: 1
+            }).addTo(map);
         }
-
-        // প্রথমবার লোড হওয়া
-        fetchAndUpdateMap();
-
-        // প্রতি ৩০ সেকেন্ড পর পর ব্যাকগ্রাউন্ডে অটো-রিফ্রেশ (পেজ রিলোড ছাড়াই)
-        setInterval(fetchAndUpdateMap, 30000);
     </script>
 </body>
 </html>
